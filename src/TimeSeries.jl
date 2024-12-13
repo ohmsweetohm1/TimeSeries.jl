@@ -39,5 +39,6 @@ include("modify.jl")
 include("basemisc.jl")
 include("deprecated.jl")
 include("plotrecipes.jl")
+include("retime.jl")
 
 end  # module TimeSeries
