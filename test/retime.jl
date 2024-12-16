@@ -178,7 +178,10 @@ using Statistics
             colnames(cl),
         )
 
-        cl_new = retime(cl_missing, new_timestamps; upsample=TimeSeries.Linear(), downsample=TimeSeries.Mean())
+        cl_new = retime(cl_missing, new_timestamps; upsample=:linear, downsample=:mean, skip_missing=false)
+
+        cl_new = retime(cl_missing, new_timestamps; upsample=:linear, downsample=:mean, skip_missing=true)
+        @test !any(ismissing.(values(cl_new)))
     end
 
     @testset "single column with NaN" begin
@@ -193,7 +196,10 @@ using Statistics
             colnames(cl),
         )
 
-        cl_new = retime(cl_missing, new_timestamps; upsample=TimeSeries.Linear(), downsample=TimeSeries.Mean())
+        cl_new = retime(cl_missing, new_timestamps; upsample=:linear, downsample=:mean, skip_missing=false)
+
+        cl_new = retime(cl_missing, new_timestamps; upsample=:linear, downsample=:mean, skip_missing=true)
+        @test !any(isnan.(values(cl_new)))
     end
 
 end
