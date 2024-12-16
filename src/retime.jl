@@ -27,6 +27,30 @@ struct NearestExtrapolate <: ExtrapolationMethod end
 struct MissingExtrapolate <: ExtrapolationMethod end
 struct NaNExtrapolate <: ExtrapolationMethod end
 
+_toInterpolationMethod(x::Symbol) = _toInterpolationMethod(Val(x))
+_toInterpolationMethod(::Val{:linear}) = Linear()
+_toInterpolationMethod(::Val{:previous}) = Previous()
+_toInterpolationMethod(::Val{:next}) = Next()
+_toInterpolationMethod(::Val{:nearest}) = Nearest()
+_toInterpolationMethod(x::InterpolationMethod) = x
+
+_toAggregationMethod(x::Symbol) = _toAggregationMethod(Val(x))
+_toAggregationMethod(::Val{:mean}) = Mean()
+_toAggregationMethod(::Val{:min}) = Min()
+_toAggregationMethod(::Val{:max}) = Max()
+_toAggregationMethod(::Val{:count}) = Count()
+_toAggregationMethod(::Val{:sum}) = Sum()
+_toAggregationMethod(::Val{:median}) = Median()
+_toAggregationMethod(::Val{:first}) = First()
+_toAggregationMethod(::Val{:last}) = Last()
+_toAggregationMethod(x::AggregationMethod) = x
+
+_toExtrapolationMethod(x::Symbol) = _toExtrapolationMethod(Val(x))
+_toExtrapolationMethod(::Val{:fillconstant}) = FillConstant(0.0)
+_toExtrapolationMethod(::Val{:nearest}) = NearestExtrapolate()
+_toExtrapolationMethod(::Val{:missing}) = MissingExtrapolate()
+_toExtrapolationMethod(::Val{:nan}) = NaNExtrapolate()
+_toExtrapolationMethod(x::ExtrapolationMethod) = x
 
 function retime(ta, new_dt::Dates.Period; kwargs...)
     new_timestamps = timestamp(ta)[1]:new_dt:timestamp(ta)[end]
@@ -41,11 +65,15 @@ end
 function retime(
     ta::TimeArray{T,N,D,A},
     new_timestamps::AbstractVector{DN};
-    upsample::InterpolationMethod=Previous(),
-    downsample::AggregationMethod=Mean(),
-    extrapolate::ExtrapolationMethod=NearestExtrapolate(),
+    upsample::Union{Symbol,InterpolationMethod}=Previous(),
+    downsample::Union{Symbol,AggregationMethod}=Mean(),
+    extrapolate::Union{Symbol,ExtrapolationMethod}=NearestExtrapolate(),
     # TODO: handle missing and NaN
 ) where {T,N,D,A,DN}
+    upsample = _toInterpolationMethod(upsample)
+    downsample = _toAggregationMethod(downsample)
+    extrapolate = _toExtrapolationMethod(extrapolate)
+
     new_values = __get_new_values(T, length(new_timestamps), size(values(ta), 2), extrapolate) # zeros(T, length(new_timestamps), size(values(ta), 2))
     old_timestamps = convert(Vector{DN}, timestamp(ta))
     old_values = values(ta)

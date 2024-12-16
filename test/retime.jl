@@ -6,11 +6,57 @@ using Statistics
 
 @testset "retime" begin
 
+    @testset "interpolation" begin
+        @test TimeSeries._toInterpolationMethod(:linear) == TimeSeries.Linear()
+        @test TimeSeries._toInterpolationMethod(:nearest) == TimeSeries.Nearest()
+        @test TimeSeries._toInterpolationMethod(:previous) == TimeSeries.Previous()
+        @test TimeSeries._toInterpolationMethod(:next) == TimeSeries.Next()
+
+        @test_throws MethodError TimeSeries._toInterpolationMethod(:foo)
+    end
+
+    @testset "aggregation" begin
+        @test TimeSeries._toAggregationMethod(:mean) == TimeSeries.Mean()
+        @test TimeSeries._toAggregationMethod(:min) == TimeSeries.Min()
+        @test TimeSeries._toAggregationMethod(:max) == TimeSeries.Max()
+        @test TimeSeries._toAggregationMethod(:count) == TimeSeries.Count()
+        @test TimeSeries._toAggregationMethod(:sum) == TimeSeries.Sum()
+        @test TimeSeries._toAggregationMethod(:median) == TimeSeries.Median()
+        @test TimeSeries._toAggregationMethod(:first) == TimeSeries.First()
+        @test TimeSeries._toAggregationMethod(:last) == TimeSeries.Last()
+
+        @test_throws MethodError TimeSeries._toAggregationMethod(:foo)
+    end
+
+    @testset "extrapolation" begin
+        @test TimeSeries._toExtrapolationMethod(:fillconstant) == TimeSeries.FillConstant(0.0)
+        @test TimeSeries._toExtrapolationMethod(:nearest) == TimeSeries.NearestExtrapolate()
+        @test TimeSeries._toExtrapolationMethod(:missing) == TimeSeries.MissingExtrapolate()
+        @test TimeSeries._toExtrapolationMethod(:nan) == TimeSeries.NaNExtrapolate()
+
+        @test_throws MethodError TimeSeries._toExtrapolationMethod(:foo)
+    end
+
     @testset "single column" begin
         new_timestamps = collect(Dates.Date(2000):Dates.Week(1):Dates.Date(2001))
 
         funcs = [mean, sum, minimum, maximum, last]
         downsamples = [TimeSeries.Mean(), TimeSeries.Sum(), TimeSeries.Min(), TimeSeries.Max(), TimeSeries.Last()]
+        @testset for (func, downsample) in zip(funcs, downsamples)
+            cl_new = retime(cl, new_timestamps; upsample=TimeSeries.Linear(), downsample)
+
+            @test timestamp(cl_new) == new_timestamps
+
+            # extrapolation
+            @test values(cl_new[1, :Close]) == values(cl[1, :Close])
+
+            # aggregation
+            idx = new_timestamps[2] .<= timestamp(cl) .< new_timestamps[3]
+            @test func(values(cl[:Close][idx])) == values(cl_new[:Close][2])[1]
+        end
+
+        # test using Symbols
+        downsamples = [:mean, :sum, :min, :max, :last]
         @testset for (func, downsample) in zip(funcs, downsamples)
             cl_new = retime(cl, new_timestamps; upsample=TimeSeries.Linear(), downsample)
 
@@ -29,6 +75,16 @@ using Statistics
         new_timestamps = collect(Dates.DateTime(2000):Dates.Hour(1):Dates.DateTime(2001))
 
         upsamples = [TimeSeries.Linear(), TimeSeries.Previous(), TimeSeries.Next(), TimeSeries.Nearest()]
+        @testset for upsample in upsamples
+            cl_new = retime(cl, new_timestamps; upsample)
+
+            @test timestamp(cl_new) == new_timestamps
+
+            # TODO: real tests
+        end
+
+        # test using Symbols
+        upsamples = [:linear, :previous, :next, :nearest]
         @testset for upsample in upsamples
             cl_new = retime(cl, new_timestamps; upsample)
 
