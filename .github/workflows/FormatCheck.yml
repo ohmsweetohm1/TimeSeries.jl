@@ -1,0 +1,44 @@
+name: format-check
+
+on:
+  push:
+    branches:
+      - "master"
+      - "release-*" # Match release branches
+    tags: "*" # Trigger on tag pushes
+  pull_request: # Trigger on pull requests
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        julia-version: [1] # Julia versions
+        julia-arch: [x86] # Architectures
+        os: [ubuntu-latest] # OS
+    steps:
+      # Step 1: Set up Julia
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: ${{ matrix.julia-arch }}
+
+      # Step 2: Check out code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 3: Install JuliaFormatter and check formatting
+      - name: Install JuliaFormatter and check formatting
+        run: |
+          julia -e '
+          using Pkg;
+          Pkg.add(PackageSpec(name="JuliaFormatter"));
+          using JuliaFormatter;
+          result = format(".", verbose=true)
+          if !result
+              error("Some files are not properly formatted. Please run `using JuliaFormatter; format(\".\")` locally.")
+          else
+              println("All files are properly formatted.")
+          end
+          '
